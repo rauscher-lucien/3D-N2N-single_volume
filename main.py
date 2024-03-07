@@ -137,14 +137,14 @@ def main():
     train_val_fraction = 0.5
 
     # Training epochs
-    epoch = 30
+    epoch = 300
 
     # Batch size
     batch_size = 16
 
     # Logger frequencies
     display_freq = 500
-    model_storing_freq = 1
+    model_storing_freq = 100
     #*********************************#
 
     # Parameter dictionary
