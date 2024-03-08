@@ -24,12 +24,12 @@ def main():
 
     if os.getenv('RUNNING_ON_SERVER') == 'true':
 
-        path_results = os.path.join('/g', 'prevedel', 'members', 'Rauscher', 'projects', '3D-N2N-single_volume')
+        path_results = os.path.join('/g', 'prevedel', 'members', 'Rauscher', 'projects', '3D-N2N-single_volume-2')
         path_dataset = os.path.join('/g', 'prevedel', 'members', 'Rauscher', 'data', 'OCT-3D-data')
 
     else:
 
-        path_results = os.path.join('Z:\\', 'members', 'Rauscher', 'projects', '3D-N2N-single_volume')
+        path_results = os.path.join('Z:\\', 'members', 'Rauscher', 'projects', '3D-N2N-single_volume-2')
         path_dataset = os.path.join('Z:\\', 'members', 'Rauscher', 'data', 'OCT-3D-data')
 
 
@@ -125,7 +125,7 @@ def main():
     print(*filenames_val_target, sep=",\n")
 
     files_train_input = [tifffile.imread(file) for file in filenames_train_input]
-    files_train_target = [tifffile.imread(file) for file in filenames_train_target]
+    files_train_target = None # [tifffile.imread(file) for file in filenames_train_target]
     files_val_input = [tifffile.imread(file) for file in filenames_val_input]
     files_val_target = [tifffile.imread(file) for file in filenames_val_target]
 
