@@ -144,7 +144,7 @@ def main():
 
     # Logger frequencies
     display_freq = 500
-    model_storing_freq = 100
+    model_storing_freq = 10
     #*********************************#
 
     # Parameter dictionary
