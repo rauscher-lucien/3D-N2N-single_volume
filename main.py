@@ -8,6 +8,7 @@ sys.path.append(os.path.join(".."))
 ## Libs
 from random import shuffle
 import glob
+import logging
 import tifffile
 import torch.backends.cudnn as cudnn
 cudnn.benchmark = True
@@ -17,6 +18,36 @@ cudnn.fastest = True
 import utils
 from train import Trainer3D as Trainer
 
+class StreamToLogger(object):
+    """
+    Fake file-like stream object that redirects writes to a logger instance.
+    """
+    def __init__(self, logger, log_level=logging.INFO):
+        self.logger = logger
+        self.log_level = log_level
+        self.linebuf = ''
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.log_level, line.rstrip())
+
+    def flush(self):
+        pass
+
+
+logging.basicConfig(filename='logging.log',  # Log filename
+                    filemode='a',  # Append mode, so logs are not overwritten
+                    format='%(asctime)s - %(levelname)s - %(message)s',  # Include timestamp
+                    level=logging.INFO,  # Logging level
+                    datefmt='%Y-%m-%d %H:%M:%S')  # Timestamp formatlog_file = open('logfile.log', 'w', buffering=1)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # Set logging level for console
+logging.getLogger('').addHandler(console_handler)
+
+# Redirect stdout and stderr to logging
+sys.stdout = StreamToLogger(logging.getLogger('STDOUT'), logging.INFO)
+sys.stderr = StreamToLogger(logging.getLogger('STDERR'), logging.ERROR)
 
 
 def main():
