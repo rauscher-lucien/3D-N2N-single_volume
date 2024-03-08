@@ -61,9 +61,7 @@ class Trainer3D:
 
         # Datasets as lists
         self.train_data_list = data_dict['train_dataset']
-        self.val_data_list = data_dict['val_dataset']
         self.train_data_list_target = data_dict['train_dataset_target'] 
-        self.val_data_list_target = data_dict['val_dataset_target'] 
 
         # check if we have  a gpu
         if torch.cuda.is_available():
@@ -194,13 +192,6 @@ class Trainer3D:
         else:
             min_train, max_train = self.calc_normfactors(self.train_data_list[0])
 
-        if os.path.isfile(fname_norm_val):
-            with open(fname_norm_val, 'r') as f:
-                min_val = float(next(f))
-                max_val = float(next(f))
-                f.close()
-        else:
-            min_val, max_val = self.calc_normfactors(self.val_data_list[0])
 
         ## Generate the transformations
 
@@ -211,21 +202,11 @@ class Trainer3D:
             RandomCrop3D((size_inputstack[1], size_inputstack[2])),
             ToTensor3D()
             ])
-        transform_val = transforms.Compose([
-            PercentileNormalize3D(mi=min_val, ma=max_val),
-            RandomFlip3D(),
-            RandomCrop3D((size_inputstack[1], size_inputstack[2])),
-            ToTensor3D()
-            ])
 
         ### Inverse Transformation
         transform_inv_train = transforms.Compose([
             ToNumpy3D(),
             PercentileDenormalize3D(mi=min_train, ma=max_train)
-            ])
-        transform_inv_val = transforms.Compose([
-            ToNumpy3D(),
-            PercentileDenormalize3D(mi=min_val, ma=max_val)
             ])
 
         ## Generate Datasets
@@ -236,23 +217,12 @@ class Trainer3D:
                     stack_size = size_inputstack[0],
                     transform=transform_train
                     )
-            dataset_val = N2NDataset2DT(
-                    self.val_data_list,
-                    stack_size = size_inputstack[0],
-                    transform=transform_val
-                    )
         else:
             dataset_train = N2NDataset3D(
                     self.train_data_list,
                     self.train_data_list_target,
                     stack_size = size_inputstack[0],
                     transform=transform_train
-                    )
-            dataset_val = N2NDataset3D(
-                    self.val_data_list,
-                    self.val_data_list_target,
-                    stack_size = size_inputstack[0],
-                    transform=transform_val
                     )
  
 
@@ -262,20 +232,13 @@ class Trainer3D:
                 dataset_train,
                 batch_size=batch_size,
                 shuffle=True,
-                num_workers=1)
-        loader_val = torch.utils.data.DataLoader(
-                dataset_val,
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=1)
+                num_workers=0)
 
         ## Information about the datasets for the training
 
         num_train = len(dataset_train)
-        num_val = len(dataset_val)
 
         num_batch_train = int((num_train / batch_size) + ((num_train % batch_size) != 0))
-        num_batch_val = int((num_val / batch_size) + ((num_val % batch_size) != 0))
 
         ## setup network
          
@@ -405,85 +368,6 @@ class Trainer3D:
             writer_train.add_scalar('loss2', np.mean(loss2_train), epoch)
             writer_train.add_scalar('loss_totoal', np.mean(loss_total_train), epoch)
 
-            ## validation phase
-            with torch.no_grad():
-                net.eval()
-
-                loss1_val = []
-                loss2_val = []
-                loss_total_val = []
-
-                for batch, data in enumerate(loader_val, 1):
-                    def should(freq):
-                        return freq > 0 and (batch % freq == 0 or batch == num_batch_val)
-
-                    input = data[0].to(device)
-                    target = data[1].to(device)
-
-                    # forward net
-                    output = net(input)
-
-                    # Calculate the loss
-                    loss1 = L1_pixelwise(output, target)
-                    loss2 = L2_pixelwise(output, target)
-                    # This hasen't worked out
-                    loss_total = 0.5*loss1 + 0.5*loss2
-                    #loss_total = loss1
-
-                    loss1_val += [loss1.item()]
-                    loss2_val += [loss2.item()]
-                    loss_total_val += [loss_total.item()]
-
-                    print('VALID: EPOCH %d: BATCH %04d/%04d: LOSS1: %.4f: LOSS2: %.4f: LOSS_TOTAL: %.4f'
-                          % (epoch, batch, num_batch_val, np.mean(loss1_val), np.mean(loss2_val), np.mean(loss_total_val)))
-
-                    if should(num_freq_disp):
-                        ## show input, target and output
-                        input = transform_inv_train(input)[0, (size_inputstack[0]//2)-8:(size_inputstack[0]//2)+8]
-                        label = transform_inv_train(target)[0, (size_inputstack[0]//2)-8:(size_inputstack[0]//2)+8]
-                        difference = np.clip(np.abs(input - label), 0, 1)
-                        output = transform_inv_train(output)[0, (size_inputstack[0]//2)-8:(size_inputstack[0]//2)+8]
-
-                        # change the colormapping
-                        input_cm = batchtrafo(change_cm, input)
-                        label_cm = batchtrafo(change_cm, label)
-                        difference_cm = batchtrafo(change_cm, difference)
-                        output_cm = batchtrafo(change_cm, output)
-
-                        writer_val.add_images('input', input_cm, num_batch_val * (epoch - 1) + batch, dataformats='NHWC')
-                        writer_val.add_images('label', label_cm, num_batch_val * (epoch - 1) + batch, dataformats='NHWC')
-                        writer_val.add_images('difference', difference_cm, num_batch_val * (epoch - 1) + batch, dataformats='NHWC')
-                        writer_val.add_images('output', output_cm, num_batch_val * (epoch - 1) + batch, dataformats='NHWC')
-
-                        input = np.clip(input, 0, 1).squeeze()
-                        label = np.clip(label, 0, 1).squeeze()
-                        output = np.clip(output, 0, 1).squeeze()
-                        dif = np.clip(abs(label - input), 0, 1).squeeze()
-
-                        # change the range of the data, so that it has uint16/int16-format
-                        input_conv = batchtrafo(backconv, input)
-                        label_conv = batchtrafo(backconv, label)
-                        output_conv = batchtrafo(backconv, output)
-                        dif_conv = batchtrafo(backconv, dif)
-
-
-                        for j in range(label.shape[0]):
-                            name = num_batch_val * (batch - 1) + j
-                            fileset = {'name': name,
-                                       'input': "%04d-input.tif" % name,
-                                       'output': "%04d-output.tif" % name,
-                                       'label': "%04d-label.tif" % name,
-                                       'dif': "%04d-dif.tif" % name}
-
-                            tifffile.imsave(os.path.join(dir_result_val, 'images', fileset['input']), input_conv[j, :, :])
-                            tifffile.imsave(os.path.join(dir_result_val, 'images', fileset['output']), output_conv[j, :, :])
-                            tifffile.imsave(os.path.join(dir_result_val, 'images', fileset['label']), label_conv[j, :, :])
-                            tifffile.imsave(os.path.join(dir_result_val, 'images', fileset['dif']), dif_conv[j, :, :])
-
-                writer_val.add_scalar('loss1', np.mean(loss1_val), epoch)
-                writer_val.add_scalar('loss2', np.mean(loss2_val), epoch)
-                writer_val.add_scalar('loss_totoal', np.mean(loss_total_val), epoch)
-
             loss_total_train_mean = np.mean(loss_total_train)
             if (loss_total_best > loss_total_train_mean) and (epoch > 0.25*num_epoch):
                 loss_total_best = loss_total_train_mean
@@ -494,7 +378,6 @@ class Trainer3D:
                 self.save(dir_chck, net, optim, epoch)
 
         writer_train.close()
-        writer_val.close()
 
 
 ## 2D Training procedure

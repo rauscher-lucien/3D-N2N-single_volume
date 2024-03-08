@@ -17,7 +17,7 @@ class N2NDataset2DT(torch.utils.data.Dataset):
         self.transform = transform
         
         # Extend the stack size, so that it fits into the 3D network
-        self.__extend()
+        self.__extend() # does not extend the stack the right way
 
         self.no_stacks = len(self.data_list)
         self.no_imgs_each_stack = np.array([len(stack) for stack in self.data_list])
@@ -77,7 +77,7 @@ class N2NDataset2DT(torch.utils.data.Dataset):
 
 
     def __extend(self):
-        for index,stack in enumerate(self.data_list):
+        for index, stack in enumerate(self.data_list):
             temp_stack_size = stack.shape[0]
             # Since we need for this N2N method targets, we need to consider
             # twice the size the input_size
