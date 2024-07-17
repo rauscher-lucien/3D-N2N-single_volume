@@ -99,8 +99,8 @@ class ValidationDataset(torch.utils.data.Dataset):
         volume = self.preloaded_data[file_path]
         
         # Determine indices for the input and target substacks
-        input_indices = range(start_index, start_index + self.stack_depth)
-        target_indices = range(start_index + self.stack_depth, start_index + self.substack_depth)
+        input_indices = range(start_index, start_index + self.substack_depth, 2)
+        target_indices = range(start_index + 1, start_index + self.substack_depth, 2)
         
         # Fetch the actual slices
         input_stack = volume[input_indices]
