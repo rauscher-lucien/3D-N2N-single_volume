@@ -95,7 +95,7 @@ def main():
         disp_freq = 1
         val_freq = 1
         model_name = 'UNet3'
-        unet_base = 32
+        unet_base = 16
         stack_depth = 32
         num_epoch = 1000
         batch_size = 8

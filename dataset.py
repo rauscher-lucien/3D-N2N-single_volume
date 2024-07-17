@@ -60,6 +60,62 @@ class VolumeSubstackDataset(torch.utils.data.Dataset):
 
 
 
+class ValidationDataset(torch.utils.data.Dataset):
+    def __init__(self, root_folder_path, stack_depth=32, transform=None):
+        self.root_folder_path = root_folder_path
+        self.transform = transform
+        self.stack_depth = stack_depth
+        self.substack_depth = 2 * stack_depth  # 64 slices: 32 input + 32 target
+        self.preloaded_data = {}
+        self.pairs = self.preload_volumes(root_folder_path)
+
+    def preload_volumes(self, root_folder_path):
+        pairs = []
+        for subdir, _, files in os.walk(root_folder_path):
+            sorted_files = sorted([f for f in files if f.lower().endswith('.tiff')])
+            for f in sorted_files:
+                full_path = os.path.join(subdir, f)
+                volume = tifffile.imread(full_path)
+                self.preloaded_data[full_path] = volume
+                num_slices = volume.shape[0]
+
+                # Divide volume into non-overlapping substacks
+                for i in range(0, num_slices - self.substack_depth + 1, self.substack_depth):
+                    pairs.append((full_path, i))
+                
+                # Handle remaining slices if they do not fit into a full substack
+                if num_slices % self.substack_depth != 0:
+                    pairs.append((full_path, num_slices - self.substack_depth))
+
+        return pairs
+
+    def __len__(self):
+        return len(self.pairs)
+
+    def __getitem__(self, index):
+        file_path, start_index = self.pairs[index]
+        
+        # Access the preloaded entire volume
+        volume = self.preloaded_data[file_path]
+        
+        # Determine indices for the input and target substacks
+        input_indices = range(start_index, start_index + self.stack_depth)
+        target_indices = range(start_index + self.stack_depth, start_index + self.substack_depth)
+        
+        # Fetch the actual slices
+        input_stack = volume[input_indices]
+        target_stack = volume[target_indices]
+
+        if self.transform:
+            input_stack, target_stack = self.transform((input_stack, target_stack))
+
+        input_stack = input_stack[np.newaxis, ...]
+        target_stack = target_stack[np.newaxis, ...]
+
+        return input_stack, target_stack
+
+
+
 class InferenceDataset(torch.utils.data.Dataset):
     def __init__(self, root_folder_path, stack_depth=32, transform=None):
         self.root_folder_path = root_folder_path

@@ -83,8 +83,7 @@ class Trainer:
         if self.model_name == 'UNet3':
             return UNet3D_3(base=self.UNet_base).to(self.device)
         elif self.model_name == 'UNet4':
-            pass
-            #return UNet4(base=self.UNet_base).to(self.device)
+            return UNet3D_4(base=self.UNet_base).to(self.device)
         elif self.model_name == 'UNet5':
             return UNet3D_5(base=self.UNet_base).to(self.device)
         else:
@@ -125,7 +124,7 @@ class Trainer:
             num_workers=0
         )
         
-        dataset_val = VolumeSubstackDataset(self.val_data_dir, stack_depth=self.stack_depth, transform=val_transform)
+        dataset_val = ValidationDataset(self.val_data_dir, stack_depth=self.stack_depth, transform=val_transform)
 
         val_loader = torch.utils.data.DataLoader(
             dataset_val,
