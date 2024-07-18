@@ -194,17 +194,17 @@ class Trainer:
 
                 print(f'Epoch [{epoch}/{self.num_epoch}], Validation Loss: {avg_val_loss:.10f}')
 
-                if avg_val_loss < best_val_loss:
-                    best_val_loss = avg_val_loss
-                    self.save(self.checkpoints_dir, model, optimizer, epoch, best_val_loss)
-                    patience_counter = 0
-                    print(f"Saved best model at epoch {epoch} with validation loss {best_val_loss:.4f}.")
-                else:
-                    patience_counter += 1
-                    print(f'Patience Counter: {patience_counter}/{self.patience}')
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                self.save(self.checkpoints_dir, model, optimizer, epoch, best_val_loss)
+                patience_counter = 0
+                print(f"Saved best model at epoch {epoch} with validation loss {best_val_loss:.4f}.")
+            else:
+                patience_counter += 1
+                print(f'Patience Counter: {patience_counter}/{self.patience}')
 
-                if patience_counter >= self.patience:
-                    print(f'Early stopping triggered after {epoch} epochs')
-                    break
+            if patience_counter >= self.patience:
+                print(f'Early stopping triggered after {epoch} epochs')
+                break
 
         self.writer.close()
