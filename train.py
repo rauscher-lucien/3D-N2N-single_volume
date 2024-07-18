@@ -8,7 +8,6 @@ import logging
 from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 
-
 from utils import *
 from transforms import *
 from dataset import *
@@ -40,19 +39,17 @@ class Trainer:
         self.num_epoch = self.hyperparameters['num_epoch']
         self.batch_size = self.hyperparameters['batch_size']
         self.lr = self.hyperparameters['lr']
+        self.patience = self.hyperparameters.get('patience', 10)
 
         self.device = get_device()
 
-        # Create result and checkpoint directories with new naming convention
         self.results_dir, self.checkpoints_dir = create_result_dir(
             self.project_dir, self.project_name, self.hyperparameters, self.train_data_dir)
         self.train_results_dir, self.val_results_dir = create_train_val_dir(self.results_dir)
 
         self.writer = SummaryWriter(self.results_dir + '/tensorboard_logs')
 
-
-
-    def save(self, checkpoints_dir, model, optimizer, epoch):
+    def save(self, checkpoints_dir, model, optimizer, epoch, best_val_loss):
         if not os.path.exists(checkpoints_dir):
             os.makedirs(checkpoints_dir)
 
@@ -60,6 +57,7 @@ class Trainer:
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'epoch': epoch,
+            'best_val_loss': best_val_loss,
             'hyperparameters': self.hyperparameters
         }, os.path.join(checkpoints_dir, 'best_model.pth'))
 
@@ -73,11 +71,12 @@ class Trainer:
         model.load_state_dict(dict_net['model'])
         optimizer.load_state_dict(dict_net['optimizer'])
         epoch = dict_net['epoch']
+        best_val_loss = dict_net.get('best_val_loss', float('inf'))
         self.hyperparameters = dict_net.get('hyperparameters', self.hyperparameters)
 
-        print(f'Loaded {epoch}th network with hyperparameters: {self.hyperparameters}')
+        print(f'Loaded {epoch}th network with hyperparameters: {self.hyperparameters}, best validation loss: {best_val_loss:.4f}')
 
-        return model, optimizer, epoch
+        return model, optimizer, epoch, best_val_loss
 
     def get_model(self):
         if self.model_name == 'UNet3':
@@ -114,7 +113,6 @@ class Trainer:
             ToTensor(),
         ])
 
-        ### make dataset and loader ###
         dataset_train = VolumeSubstackDataset(self.train_data_dir, stack_depth=self.stack_depth, transform=transform_train)
 
         loader_train = torch.utils.data.DataLoader(
@@ -133,21 +131,20 @@ class Trainer:
             num_workers=0
         )
 
-        ### initialize network ###
         model = self.get_model()
-        criterion = nn.MSELoss().to(self.device)
+        criterion = torch.nn.MSELoss().to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), self.lr)
 
         st_epoch = 0
         best_val_loss = float('inf')
+        patience_counter = 0
 
         if self.train_continue == 'on':
-            print(self.checkpoints_dir)
-            model, optimizer, st_epoch = self.load(self.checkpoints_dir, model, self.device, optimizer)
+            model, optimizer, st_epoch, best_val_loss = self.load(self.checkpoints_dir, model, self.device, optimizer)
             model = model.to(self.device)
 
         for epoch in range(st_epoch + 1, self.num_epoch + 1):
-            model.train()  # Ensure model is in training mode
+            model.train()
             train_loss = 0.0
 
             for batch, data in enumerate(loader_train, 1):
@@ -164,7 +161,6 @@ class Trainer:
                 optimizer.step()
 
             if epoch % self.disp_freq == 0:
-                # Assuming transform_inv_train can handle the entire stack
                 input_stack = transform_inv_train(input_stack)
                 target_stack = transform_inv_train(target_stack)
                 output_stack = transform_inv_train(output_stack)
@@ -182,7 +178,7 @@ class Trainer:
             avg_val_loss = float('inf')
 
             if epoch % self.val_freq == 0:
-                model.eval()  # Ensure model is in evaluation mode
+                model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
                     for val_batch, val_data in enumerate(val_loader, 0):
@@ -198,9 +194,17 @@ class Trainer:
 
                 print(f'Epoch [{epoch}/{self.num_epoch}], Validation Loss: {avg_val_loss:.10f}')
 
-            if avg_val_loss < best_val_loss:
-                best_val_loss = avg_val_loss
-                self.save(self.checkpoints_dir, model, optimizer, epoch)
-                print(f"Saved best model at epoch {epoch} with validation loss {best_val_loss:.4f}.")
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    self.save(self.checkpoints_dir, model, optimizer, epoch, best_val_loss)
+                    patience_counter = 0
+                    print(f"Saved best model at epoch {epoch} with validation loss {best_val_loss:.4f}.")
+                else:
+                    patience_counter += 1
+                    print(f'Patience Counter: {patience_counter}/{self.patience}')
+
+                if patience_counter >= self.patience:
+                    print(f'Early stopping triggered after {epoch} epochs')
+                    break
 
         self.writer.close()

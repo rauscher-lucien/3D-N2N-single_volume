@@ -44,11 +44,11 @@ def load_model(checkpoints_dir, model, optimizer=None, device='cpu'):
 
 def get_model(model_name, UNet_base):
     if model_name == 'UNet3':
-        return UNet3(base=UNet_base)
+        return UNet3D_3(base=UNet_base)
     elif model_name == 'UNet4':
-        return UNet4(base=UNet_base)
+        return UNet3D_4(base=UNet_base)
     elif model_name == 'UNet5':
-        return UNet5(base=UNet_base)
+        return UNet3D_5(base=UNet_base)
     else:
         raise ValueError(f"Unknown model name: {model_name}")
 
@@ -56,7 +56,7 @@ def main():
 
     #********************************************************#
 
-    project_dir = r"\\tier2.embl.de\prevedel\members\Rauscher\final_projects\2D-N2N-single_volume\nema-test_1_Nematostella_B_model_nameUNet4_UNet_base32_num_epoch10000_batch_size8_lr1e-05"
+    project_dir = r"\\tier2.embl.de\prevedel\members\Rauscher\final_projects\3D-N2N-single_volume\test_2_Nematostella_B_model_nameUNet4_UNet_base16_stack_depth32_num_epoch10000_batch_size8_lr1e-05"
     data_dir = r"C:\Users\rausc\Documents\EMBL\data\Nematostella_B"
     inference_name = os.path.basename(data_dir)
 
@@ -97,8 +97,15 @@ def main():
         Denormalize(mean, std)
     ])
 
+    # Load hyperparameters first to get model details
+    hyperparameters, epoch = load_hyperparameters(checkpoints_dir, device=device)
+    model_name = hyperparameters['model_name']
+    UNet_base = hyperparameters['UNet_base']
+    stack_depth = hyperparameters['stack_depth']
+
     inf_dataset = InferenceDataset(
         data_dir,
+        stack_depth=stack_depth,  # Use loaded stack_depth
         transform=inf_transform
     )
 
@@ -110,11 +117,6 @@ def main():
         shuffle=False,
         num_workers=2
     )
-
-    # Load hyperparameters first to get model details
-    hyperparameters, epoch = load_hyperparameters(checkpoints_dir, device=device)
-    model_name = hyperparameters['model_name']
-    UNet_base = hyperparameters['UNet_base']
 
     # Dynamically get model based on model_name and UNet_base
     model = get_model(model_name, UNet_base)
@@ -136,12 +138,12 @@ def main():
             output_img_np = inv_inf_transform(output_img)  # Convert output tensors to numpy format for saving
 
             for img in output_img_np:
-                output_images.append(img)
+                output_images.append(img.squeeze())  # Remove the singleton dimension
 
             print('BATCH %04d/%04d' % (batch, len(inf_loader)))
-    
+
     # Stack and save output images
-    output_stack = np.stack(output_images, axis=0)
+    output_stack = np.concatenate(output_images, axis=0)  # Concatenate along the first dimension
     hyperparameters_str = "_".join([f"{key}{value}" for key, value in hyperparameters.items()])
     filename = f'{method_name}_output_stack-{inference_name}-epoch{epoch}-{hyperparameters_str}.TIFF'
     tifffile.imwrite(os.path.join(inference_folder, filename), output_stack)
@@ -150,4 +152,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
