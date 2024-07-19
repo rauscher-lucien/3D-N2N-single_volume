@@ -56,6 +56,8 @@ class VolumeSubstackDataset(torch.utils.data.Dataset):
         input_stack = input_stack[np.newaxis, ...]
         target_stack = target_stack[np.newaxis, ...]
 
+        del volume
+
         return input_stack, target_stack
 
 
@@ -111,6 +113,8 @@ class ValidationDataset(torch.utils.data.Dataset):
 
         input_stack = input_stack[np.newaxis, ...]
         target_stack = target_stack[np.newaxis, ...]
+
+        del volume
 
         return input_stack, target_stack
 

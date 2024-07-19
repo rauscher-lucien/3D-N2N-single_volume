@@ -56,11 +56,11 @@ def main():
 
     #********************************************************#
 
-    project_dir = r"\\tier2.embl.de\prevedel\members\Rauscher\final_projects\3D-N2N-single_volume\test_2_Nematostella_B_model_nameUNet4_UNet_base16_stack_depth32_num_epoch10000_batch_size8_lr1e-05"
+    project_dir = r"\\tier2.embl.de\prevedel\members\Rauscher\final_projects\3D-N2N-single_volume\test_3_nema_model_nameUNet5_UNet_base8_stack_depth32_num_epoch100000_batch_size8_lr1e-05_patience5000"
     data_dir = r"C:\Users\rausc\Documents\EMBL\data\Nematostella_B"
     inference_name = os.path.basename(data_dir)
 
-    # Get the parent directory of the project directory to use as the method name
+    project_name = os.path.basename(project_dir)
     method_name = os.path.basename(os.path.dirname(project_dir))
 
     #********************************************************#
@@ -144,11 +144,11 @@ def main():
 
     # Stack and save output images
     output_stack = np.concatenate(output_images, axis=0)  # Concatenate along the first dimension
-    hyperparameters_str = "_".join([f"{key}{value}" for key, value in hyperparameters.items()])
-    filename = f'{method_name}_output_stack-{inference_name}-epoch{epoch}-{hyperparameters_str}.TIFF'
+    filename = f'{method_name}_output_stack-{inference_name}-project-{project_name}-epoch{epoch}.TIFF'
     tifffile.imwrite(os.path.join(inference_folder, filename), output_stack)
 
     print("TIFF stacks created successfully.")
 
 if __name__ == '__main__':
     main()
+
