@@ -109,7 +109,7 @@ class Trainer:
 
         val_transform = transforms.Compose([
             Normalize(mean, std),
-            CropToMultipleOf16Validation(),
+            CropToMultipleOf32Validation(),
             ToTensor(),
         ])
 

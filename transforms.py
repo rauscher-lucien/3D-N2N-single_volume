@@ -242,6 +242,37 @@ class CropToMultipleOf16Validation(object):
         target_cropped = target_volume[:, start_h:start_h + new_h, start_w:start_w + new_w]
 
         return input_cropped, target_cropped
+    
+
+class CropToMultipleOf32Validation(object):
+    """
+    Crop the height and width of each volume in a stack of 3D images to ensure their height and width are multiples of 16.
+    The depth dimension remains intact.
+    """
+
+    def __call__(self, data):
+        """
+        Args:
+            data (tuple): Tuple containing input and target 3D arrays with shape (D, H, W).
+
+        Returns:
+            tuple: Tuple containing cropped input and target 3D arrays.
+        """
+
+        input_volume, target_volume = data
+        d, h, w = input_volume.shape  # Assuming input_volume is a numpy array with shape (D, H, W)
+
+        new_h = h - (h % 32)
+        new_w = w - (w % 32)
+
+        # Calculate cropping margins
+        start_h = (h - new_h) // 2
+        start_w = (w - new_w) // 2
+
+        input_cropped = input_volume[:, start_h:start_h + new_h, start_w:start_w + new_w]
+        target_cropped = target_volume[:, start_h:start_h + new_h, start_w:start_w + new_w]
+
+        return input_cropped, target_cropped
 
 
 

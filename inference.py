@@ -56,7 +56,7 @@ def main():
 
     #********************************************************#
 
-    project_dir = r"\\tier2.embl.de\prevedel\members\Rauscher\final_projects\3D-N2N-single_volume\test_3_nema_model_nameUNet5_UNet_base8_stack_depth32_num_epoch100000_batch_size8_lr1e-05_patience5000"
+    project_dir = r"\\tier2.embl.de\prevedel\members\Rauscher\final_projects\3D-N2N-single_volume\test_2_Nematostella_B_model_nameUNet3_UNet_base64_stack_depth32_num_epoch10000_batch_size8_lr1e-05"
     data_dir = r"C:\Users\rausc\Documents\EMBL\data\Nematostella_B"
     inference_name = os.path.basename(data_dir)
 
