@@ -135,6 +135,10 @@ class Trainer:
         criterion = torch.nn.MSELoss().to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), self.lr)
 
+        if torch.cuda.device_count() > 1:
+            print("Using", torch.cuda.device_count(), "GPUs!")
+            model = nn.DataParallel(model)
+
         st_epoch = 0
         best_val_loss = float('inf')
         patience_counter = 0
