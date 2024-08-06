@@ -186,26 +186,6 @@ def main():
     print(f"Average Inference Time: {avg_inference_time} seconds")
     logging.info(f"Average Inference Time: {avg_inference_time} seconds")
 
-    # Stack and save output images
-    output_images = []
-    with torch.no_grad():
-        model.eval()
-        for batch, data in enumerate(inf_loader):
-            input_img = data.to(device)
-            output_img = model(input_img)
-            output_img_np = inv_inf_transform(output_img)  # Convert output tensors to numpy format for saving
-
-            for img in output_img_np:
-                output_images.append(img.squeeze())  # Remove the singleton dimension
-
-            print('BATCH %04d/%04d' % (batch, len(inf_loader)))
-
-    output_stack = np.concatenate(output_images, axis=0)  # Concatenate along the first dimension
-    filename = f'{method_name}_output_stack-{inference_name}-project-{project_name}-epoch{epoch}.TIFF'
-    tifffile.imwrite(os.path.join(results_dir, filename), output_stack)
-
-    print("TIFF stacks created successfully.")
-    logging.info("TIFF stacks created successfully.")
-
 if __name__ == '__main__':
     main()
+
